@@ -1,0 +1,6 @@
+Revision history for Perl extension Log::Easy.
+
+0.01  Fri Nov 14 17:23:17 2003
+	- original version; created by h2xs 1.22 with options
+		-AXn Log::Easy
+
