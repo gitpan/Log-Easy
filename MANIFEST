@@ -2,5 +2,6 @@ Changes
 Makefile.PL
 MANIFEST
 README
-Easy.pm
+TODO
 t/1.t
+Log/Easy.pm

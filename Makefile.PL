@@ -3,10 +3,10 @@ use ExtUtils::MakeMaker;
 # See lib/ExtUtils/MakeMaker.pm for details of how to influence
 # the contents of the Makefile that is written.
 WriteMakefile(
-    'NAME'		=> 'Log::Easy',
-    'VERSION_FROM'	=> 'Easy.pm', # finds $VERSION
-    'PREREQ_PM'		=> {}, # e.g., Module::Name => 1.1
-    ($] >= 5.005 ?    ## Add these new keywords supported since 5.005
-      (ABSTRACT_FROM => 'Easy.pm', # retrieve abstract from module
-       AUTHOR     => 'Theo Lengyel <dirt@localdomain>') : ()),
-);
+              AUTHOR            => 'Theo Lengyel <dirt@cpan.org>',
+              NAME		=> 'Log::Easy',
+              VERSION_FROM	=> 'Log/Easy.pm',
+              ABSTRACT_FROM     => 'Log/Easy.pm',
+              PREREQ_PM		=> { Filter::Simple => '.01',
+                                   },
+             );

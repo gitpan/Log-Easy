@@ -9,7 +9,7 @@ use Exporter;
 our ( %EXPORT_TAGS, @ISA, @EXPORT_OK, @EXPORT, $VERSION );
 @ISA = qw( Exporter );
 
-$VERSION = '0.01.2';
+$VERSION = '0.01.3';
 
 our ($FILTER_REGEX, $NOT_FILTER_REGEX, $FILTER_ALL_REGEX, $MATCH_LOG_LEVEL_REGEX, $FILTER, $NOT_FILTER, $CNT );
 
@@ -721,14 +721,14 @@ returns the cloned object
 =item $log->n();
 
 set the message terminator for this log object, each log message
-output will be terminated with the contents of this setting (default
-=> "\n")
+output will be terminated with the contents of this setting (default "\n")
 
 =item  $log->log();
 
 set the log object to use for actual write operation, this occurrs
 AFTER the decision as to whether or not this log message will be
-processed
+processed. This allows one to set the log object to another logging
+module (such as running under apache)
 
 
 =item  $log->log_file();
@@ -798,6 +798,7 @@ messages at compile time. Here is the general idea:
  $log->write($dll, "Nifty stuff");
 
  # NOT-FILTERED, but will issue a warning if $ENV{WARN_FILTER} is true.
+ # because it looks kind of like a log_level indicator that sould be filtered ($dll)
  $log->write(dll, "Nifty stuff");
 
  # NOT-FILTERED, functionally equivalent to previous example
@@ -872,7 +873,7 @@ change the codes which represent the log_levels such that $xll style
 log calls can have slightly different behavior in terms of being
 programmer-debug calls, which will probably want to have detailed
 prefix informtaion, while non-programmer-debug calls may want
-different prefix info
+different prefix info ($dll vs DEBUG)
 
 =back
 
