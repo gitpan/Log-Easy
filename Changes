@@ -1,9 +1,7 @@
-Revision history for Perl extension Log.
-
-0.01  Sat Dec  6 16:48:26 2003
-	- original version; created by h2xs 1.22 with options
-		-AXn Log
-
-
-
-
+01.01 - trial run, apparently there is little mercy for incorectly packaged module uploads
+01.02 - try again, added some documentation, fixed failing tests
+01.03 - adjusted dist layout
+01.04 - dist layout was still "wrong", try again
+01.05 - ?
+01.06 - ?
+01.07 - fixed problem with pad() and space() where it failed to get an appropriate length for the fill character if the fill character was a zero `0'

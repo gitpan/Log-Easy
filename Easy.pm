@@ -9,7 +9,7 @@ use Exporter;
 our ( %EXPORT_TAGS, @ISA, @EXPORT_OK, @EXPORT, $VERSION );
 @ISA = qw( Exporter );
 
-$VERSION = '0.01.06';
+$VERSION = '0.01.07';
 
 our ($FILTER_REGEX, $NOT_FILTER_REGEX, $FILTER_ALL_REGEX, $MATCH_LOG_LEVEL_REGEX, $FILTER, $NOT_FILTER, $CNT );
 
@@ -312,7 +312,7 @@ sub space {
   my $piece     = shift;
   my $max       = shift || 27;
   my $separator = shift || ' ';
-  my $lp = $piece ? length $piece : 0;
+  my $lp = defined $piece ? length $piece : 0;
   my $ls = length $separator;
   my $multiplier = $lp < $max ? int (( $max - $lp )/$ls ) : 1;
   my $return = $piece . ( $separator x $multiplier );
@@ -326,7 +326,7 @@ sub pad {
   my $max       = shift || 27;
   my $separator = shift;
   length $separator or $separator = ' ';
-  my $lp = $piece ? length $piece : 0;
+  my $lp = defined $piece ? length $piece : 0;
   my $ls = length $separator;
   my $multiplier = $lp < $max ? int (( $max - $lp )/$ls ) : 1;
   my $return = ( $separator x $multiplier ) . $piece;
