@@ -4,12 +4,13 @@ use Data::Dumper;
 use IO::File;
 use Fcntl qw(:flock);
 use Carp qw( cluck confess );
+use Getopt::Long;
 
 use Exporter;
 our ( %EXPORT_TAGS, @ISA, @EXPORT_OK, @EXPORT, $VERSION );
 @ISA = qw( Exporter );
 
-$VERSION = '0.01.07';
+$VERSION = '0.01_08';
 
 our ($FILTER_REGEX, $NOT_FILTER_REGEX, $FILTER_ALL_REGEX, $MATCH_LOG_LEVEL_REGEX, $FILTER, $NOT_FILTER, $CNT );
 
@@ -25,7 +26,7 @@ our $STACK_TRACE = $ENV{STACK_TRACE} || 0;
 our %BIG_WARN_DEFAULTS = qw( WARN 0 ERROR 1 CRIT 1 );
 our %BIG_WARN_ON       = map { $_ => ( defined $ENV{"BIG_WARN_ON_$_"} ? $ENV{"BIG_WARN_ON_$_"} :( $BIG_WARN_DEFAULTS{$_} || 0 )); }  keys %BIG_WARN_DEFAULTS;
 
-if ( $ENV{LOG_USE_CARP} ) { # map { ($_ ? $_ : ()) } values %BIG_WARN_ON ) {
+if ( $ENV{LOG_USE_CARP} and $ENV{LOG_USE_CARP} eq 'YES'  ) {
   # big ugly stack traces when we encounter a 'warn' or a 'die'
   $SIG{__WARN__} = \&cluck;
   $SIG{__DIE__}  = \&confess;
@@ -52,7 +53,7 @@ use constant DEFAULT_FILTER =>  qw( all mll lll qll cll ell wll nll ill dll tll 
                 # this is useful for debugging when you may want a particular message to be displayed (simply delete the '$')
                 log_level_not_filtered => [                 DEFAULT_FILTER() ],
                 # these are utility methods for output formatting
-                misc      => [ qw(space pad dump _caller) ],
+                misc      => [ qw(space pad dump _caller get_options usage) ],
                );
 
 $EXPORT_TAGS{all} = [ map {@{$_}} values %EXPORT_TAGS ];
@@ -61,7 +62,7 @@ $EXPORT_TAGS{initialize} = [ @{$EXPORT_TAGS{log_level}} ];
 @EXPORT = ();
 
 # the following two sets of exported variables/subs are for development debugging purposes and are
-# filtered out at compile time, unless $ENV{FILTER} is appropriately set. I'm thinking that since
+# filtered out at compile time, unless $ENV{LOG_FILTER} is appropriately set. I'm thinking that since
 # these are for development debugging that they should maybe have some different significance when
 # it comes to descriptive output. Currently all log messages output the &{$log->{prefix}}(). Perhaps
 # we should use a bitmask to determine whether or not a log should be output and additionally what
@@ -150,22 +151,22 @@ use constant  sll => SPEW;
 
 BEGIN { 
   $ENV{DEBUG_FILTER} = exists $ENV{DEBUG_FILTER} ? $ENV{DEBUG_FILTER} : 0;
-  $ENV{FILTER} ||= 'ON';
+  $ENV{LOG_FILTER} ||= $ENV{FILTER} ||= 'ON';
   unless ( defined $FILTER_REGEX ) {
     my $FILTER;
-    if( $ENV{FILTER} =~ /^off$/i ) {
+    if( $ENV{LOG_FILTER} =~ /^off$/i ) {
       print STDERR "FILTER: IS OFF\n" if $ENV{DEBUG_FILTER};
       $FILTER = [];
       $NOT_FILTER = [ DEFAULT_FILTER ];
-    } elsif( $ENV{FILTER} =~ /^(on|\d+)$/i ) {
+    } elsif( $ENV{LOG_FILTER} =~ /^(on|\d+)$/i ) {
       print STDERR "FILTER: IS ON\n" if $ENV{DEBUG_FILTER};
       $FILTER = [ DEFAULT_FILTER ];
       $NOT_FILTER = [];
     } else {
-      print STDERR "FILTER: IS SPECIAL FILTER=$ENV{FILTER}\n" if $ENV{DEBUG_FILTER};
+      print STDERR "FILTER: IS SPECIAL FILTER=$ENV{LOG_FILTER}\n" if $ENV{DEBUG_FILTER};
       my %not_filter = ();
       my %filter = ();
-      foreach my $piece ( split( /:/, $ENV{FILTER} )) {
+      foreach my $piece ( split( /:/, $ENV{LOG_FILTER} )) {
         if ( $piece =~ /^\!/ ) {
             $piece =~ s/^\!//;
               $not_filter{$piece} = $piece;
@@ -209,8 +210,8 @@ our $replace = '1;';
 FILTER { # this filters out unwanted log messages from source code BEFORE COMPILATION
   # proves to be a great boon to performance
   $CNT++;
-  ##print STDERR __LINE__, ": \$ENV{FILTER} = $ENV{FILTER}\n";
-  return if ( $ENV{FILTER} and $ENV{FILTER} =~ /^(OFF|)$/i);
+  ##print STDERR __LINE__, ": \$ENV{LOG_FILTER} = $ENV{LOG_FILTER}\n";
+  return if ( $ENV{LOG_FILTER} and $ENV{LOG_FILTER} =~ /^(OFF|)$/i);
   #return if ( $before =~ /\s*/s );
   my @caller = caller(1);
 #  print STDERR "CALLER: \n\t", join("\t\n", map { (defined $_ ? $_ : '')} @caller ), "\n";
@@ -252,7 +253,8 @@ FILTER { # this filters out unwanted log messages from source code BEFORE COMPIL
   $_ = join( "\n", @after) . "\n";
 };
 
-$log_level = $ENV{LOG_LEVEL} ||= ( [ map {$ENV{$_}?$_:()}(@{$EXPORT_TAGS{log_level}}) ]->[0] || WARN );
+my $default_log_level = 'NOTICE';
+$log_level = $ENV{LOG_LEVEL} ||= ( [ map {$ENV{$_}?$_:()}(@{$EXPORT_TAGS{log_level}}) ]->[0] || $default_log_level );
 # message terminator (sometimes we DON'T want newlines!)
 our $n;
 sub n              { exists $_[1] ? $_[0]->{ n              } = $_[1] : $_[0]->{ n             }; }
@@ -262,20 +264,22 @@ sub log_level      { exists $_[1] ? $_[0]->{ log_level      } = $_[1] : $_[0]->{
 sub dump_refs      { exists $_[1] ? $_[0]->{ dump_refs      } = $_[1] : $_[0]->{ dump_refs     }; }
 sub handle_fatals  { exists $_[1] ? $_[0]->{ handle_fatals  } = $_[1] : $_[0]->{ handle_fatals }; }
 sub exclusive      { exists $_[1] ? $_[0]->{ exclusive      } = $_[1] : $_[0]->{ exclusive     }; }
-sub stack_trace    { exists $_[1] ? $_[0]->{ st             } = $_[1] : $_[0]->{ st            }; }
+sub stack_trace    { exists $_[1] ? $_[0]->{ stack_trace    } = $_[1] : $_[0]->{ stack_trace   }; }
 sub email          { exists $_[1] ? $_[0]->{ email          } = $_[1] : $_[0]->{ email         }; }
 sub prefix         { exists $_[1] ? $_[0]->{ prefix         } = $_[1] : $_[0]->{ prefix        }; }
+sub terse          { exists $_[1] ? $_[0]->{ terse          } = $_[1] : $_[0]->{ terse         }; }
 
 sub clone {
   my $self = shift;
   my $VAR1 = $self->dump( @_ );
   my $clone = eval $VAR1;
-  $clone->{prefix} = $self->{prefix} if ( UNIVERSAL::isa( $self, __PACKAGE__ ) and ref $self->{prefix} eq 'CODE' );
+  $clone->{prefix} = $self->{prefix} if ( UNIVERSAL::isa( $clone, __PACKAGE__ ) and ref $self->{prefix} eq 'CODE' );
   return $clone;
 }
 
 our $default_handle_fatals = 1;
-our %init = ( log_file       => $ENV{LOG_FILE} || 'STDERR' ,
+our $default_fh = 'STDOUT';
+our %init = ( log_file       => $ENV{LOG_FILE} || $default_fh ,
               log_level      => $log_level,
               dump_refs      => defined $ENV{LOG_DUMP_REFS} ? $ENV{LOG_DUMP_REFS} : 1 ,
               handle_fatals  => defined $ENV{LOG_HANDLE_FATALS} ? $ENV{LOG_HANDLE_FATALS} : $default_handle_fatals,
@@ -325,13 +329,15 @@ sub pad {
   my $piece     = shift;
   my $max       = shift || 27;
   my $separator = shift;
+  defined $separator or $separator = ' ';
   length $separator or $separator = ' ';
   my $lp = defined $piece ? length $piece : 0;
   my $ls = length $separator;
-  my $multiplier = $lp < $max ? int (( $max - $lp )/$ls ) : 1;
+  my $multiplier = $lp < $max ? int (( $max - $lp )/$ls ) : 0;
   my $return = ( $separator x $multiplier ) . $piece;
   my $lr = length $return;
-  $lr < $max ? ( $return = ( ' ' x ( $max - $lr )) . $return) : ();
+  #$log->write($lll, "$max:$lr:$piece:") if ( $max != $lr );
+  $lr <= $max ? ( $return = ( ' ' x ( $max - $lr )) . $return) : ();
   return $return;
 }
 
@@ -380,6 +386,48 @@ sub dump { # maybe change this to take a list of dumpees
   return $DUMP
 }
 
+sub get_options {
+  my $optargs = shift;
+  my %GetOptions = map { ("$_$optargs->{$_}[0]" => \$optargs->{$_}[1]) } keys %$optargs;
+  $log->write($dll, '%GetOptions: ', \%GetOptions);
+  my $opt = GetOptions( %GetOptions );
+  $log->write($dll, '$opt: ', $opt);
+  
+  $log->write($dll, '$optargs: ', $optargs);
+  my %options = map { ($_ => $optargs->{$_}[1]) } keys %$optargs;
+  $log->write($dll, '%options: ', \%options);
+  
+  # check that all required options have been provided
+  my @missing;
+  foreach (keys %$optargs ) {
+    if ( $optargs->{$_}[0] =~ /\=/ and not $options{$_} ) {
+      push @missing, $_;
+    }
+  }
+  return usage ( $optargs, @missing ) if (scalar @missing);
+  return %options;
+}
+
+sub usage {
+  my $optargs = shift;
+  $log->write('STDERR', "Missing required option(s): ( ", join(', ', map { "--$_" } @_ )," )::: \n", join("\\\n" . (' ' x length "usage: $0"),
+						   space("usage: $0", ),
+						   map { my @opt = ( '--', space($_, 20), space(uc "<$_>", 22));
+							 @opt = ( $optargs->{$_}[0] =~ /\=/
+								  ? ( ' '  , @opt , ' '    )
+								  : ( ' [ ', @opt ,' ] ')
+								);
+							 join('', @opt);
+						       } ( # sort here to make required options come first
+							  sort { my ($an, $bn) = ( $optargs->{$a}[0], $optargs->{$b}[0] );
+								 my ($av, $bv) = (1, 1);
+								 $an =~ /\=/ and $av = 0;
+								 $bn =~ /\=/ and $bv = 0;
+								 $av <=> $bv
+							       } keys %$optargs
+							 )));
+  exit -1;
+}
 
 sub _prepare_message {
   my $self  = shift;
@@ -402,9 +450,10 @@ sub _prepare_message {
     }
     push @outmsg, "$msg";
   }
+  # really we should have somethings that checks the %args for ALL of the possible settings
   my $st = $STACK_TRACE;
-  $STACK_TRACE = exists $args->{st} ? $args->{st}
-    : defined $self->{st}         ? $self->{st}
+  $STACK_TRACE = exists $args->{stack_trace} ? $args->{stack_trace}
+    : defined $self->{stack_trace}           ? $self->{stack_trace}
       : $STACK_TRACE;
 
   my $prefix = exists $args->{prefix} ? $args->{prefix}
@@ -418,14 +467,27 @@ sub _prepare_message {
   return @outmsg;
 }
 
-sub _default_prefix {
+*_default_prefix = \&_prefix_dev_long;
+sub _prefix_dev_long {
   my $level = shift;
   return '['.join('][',
-                  #   "pid: $$",
-                  #   scalar localtime(),
+                  "pid: $$",
+                  scalar localtime(),
                   _caller(3), # we need a 3 here to ignore (skip over) the subroutine calls within the logging module itself
                   uc $level,
-                 )."]\n";
+                 )."] "
+		   . "\n"
+		   ;
+}
+
+sub _prefix_dev_short {
+  my $level = shift;
+  return '['.join('][',
+                  _caller(3), # we need a 3 here to ignore (skip over) the subroutine calls within the logging module itself
+                  uc $level,
+                 )."] "
+		   . "\n"
+		   ;
 }
 
 my %level_cache = ();
@@ -495,13 +557,14 @@ sub write {
     $BIG_WARN_ON{$level} and warn "$level : $return";
     $n = undef;
   }
-  ref $return eq 'ARRAY' and $return = join('', @$return);
-  return wantarray ? ( $return, $status ) : $return ;
+  ref $return eq 'ARRAY' and $return = join('', map { defined $_ ? $_ : 'undef' } @$return);
+  return wantarray ? ( $status, $return ) : $status ;
 }
 sub _actually_log {
   #print STDERR __PACKAGE__, " ", __LINE__, " ::: OH MY!\n";
   my $self    = shift;
   my $args = { @_ };
+  $args->{-terse}   ||= $self->{terse};
   $args->{-level}   ||= INFO;
   $args->{-message} ||= ' - -- NO MESSAGE -- - ';
   my $fh = $self->_fh( %$args ) or warn "No filehandle for `$args->{-level}'";
@@ -520,8 +583,8 @@ sub _caller {
     my $s = 0;
     my %mes;
     my @mes = ({map{$mes{$_}=!$mes{$_}?length$_:($mes{$_}<length$_)?length$_:$mes{$_};($_=>$_);}@showf});
-    my $width;
-    my $depth;
+    my $width = 0;
+    my $depth = 0;
     while (1) {
       my %f;
       $depth = $f + ++$s;
@@ -535,8 +598,8 @@ sub _caller {
       $mes[$depth] = \%f;
     }
     my ($c, @c);
-    my $sep = ' -';
-    my @m = ( '_' x $width,"\n", ( map { if($_){$c=$_;@c=map{(space($c->{$_},$mes{$_}+2,$sep),' | ');}@showf;$sep='';(@c,"\n");}else{()}}@mes),'_' x $width,"\n",);
+    my $sep = '';
+    my @m = ( '_' x $width,"\n", join("", "\n", map { if($_){$c=$_;@c=map{(space($c->{$_},$mes{$_}+2,$sep) . ' | ');}@showf;$sep='';(@c,"\n");}else{()}}@mes),'_' x $width,"\n",);
     push @caller, @m;
   }
 
@@ -573,12 +636,12 @@ LOGS: { # a cache of open log objects for output
   # you lose individual control of the log level, file ... and such
   # although I may be able to fix that
   my %LOGS = ( STDOUT  => __PACKAGE__->object( { log_file  => 'STDOUT', log_level => $log_level } ),
-                      STDIN   => __PACKAGE__->object( { log_file  => 'STDIN' , log_level => $log_level } ),
-                      STDERR  => __PACKAGE__->object( { log_file  => 'STDERR', log_level => $log_level } ),
-                    );
+               STDIN   => __PACKAGE__->object( { log_file  => 'STDIN' , log_level => $log_level } ),
+               STDERR  => __PACKAGE__->object( { log_file  => 'STDERR', log_level => $log_level } ),
+             );
   
   # unless otherwise specified we will use STDERR as our output stream
-  $LOGS{DEFAULT} = $LOGS{STDERR};
+  $LOGS{DEFAULT} = $LOGS{$default_fh};
   #use Carp qw( cluck confess );
   #local $SIG{__WARN__} = \&cluck;
   #local $SIG{__DIE__} = \&confess;
@@ -608,6 +671,15 @@ LOGS: { # a cache of open log objects for output
   }
 }
 
+
+sub get_fh {
+  my $self = shift;
+  my $file = shift || $self->{log_file};
+  #$log->write($lll, '$file: ', $file);
+  my $fh = $self->_fh( log_file => $file );
+  return $fh;
+}
+
 our %FHS = ();
 # OK .. I'm not sure, but trying to use STDIN may be totally retarded
 @FHS{qw( STDIN  STDOUT STDERR )} = ( \*STDIN , \*STDOUT, \*STDERR );
@@ -625,22 +697,26 @@ FILEHANDLES : { # a cache of open filehandles for output
     if ( $level =~ /^STDERR|STDOUT|STDIN$/i ) {
       $fh = $FHS{"\U$level"};
     } else {
-      $file = $args->{file}
+      $file = $args->{log_file}
         || $self->{"log_file_$level"}
           || $self->{log_file}
-            || 'STDERR';
-      
+            || $default_fh;
       $fh = $args->{fh} || $FHS{$file};
     }
     #print STDOUT "FH: [$level] :: ", $fh, ":", fileno($fh), "\n";
-    
+
     return $fh if ( $fh and fileno($fh) );
-    
+    #die;
+    my $mode;
+    my $file_clean = $file;
+    if ( $file_clean =~ s/^\s*([>]{1,2})// ) {
+      $mode = $1;
+    } else {
+      $mode = -f $file_clean ? '>>' : '>';
+    }
     ( $fh = $FHS{$file} = new IO::File ) or die $!;
-    
-    my $mode = $file =~ /^\s*[><]/ ? "" : -e $file ? '>>' : '>';
-    
-    $fh->open( "$mode $file" )
+    #print STDERR "Opening new filehandle on '$mode' '$file_clean'\n";
+    $fh->open( "$mode $file_clean" )
       and flock $fh, LOCK_EX || die $!;
     _unbuffer( $fh );
   }
@@ -658,8 +734,9 @@ FILEHANDLES : { # a cache of open filehandles for output
   sub _WRITE {
     my $message;
     my $fh;
+    my $args = {};
     if ( $_[0] =~ /^-/ ) {
-      my $args = { @_ };
+      $args = { @_ };
       $message = $args->{-message} or return undef;
       ref $message eq 'ARRAY' or $message = [ $message ] ;
       $fh = $args->{-FH};
@@ -667,9 +744,12 @@ FILEHANDLES : { # a cache of open filehandles for output
       shift @_ if ( $fh = $FHS{$_[0]} );
       $message = [ join ' ', _caller(), @_ ] ;
     }
-    $fh ||= $FHS{STDERR};
+    $fh ||= $FHS{$default_fh};
     my $return = join '', @$message;
-    print $fh $return, $n;
+    if ( $args->{-terse} ) {
+      $return =~ s/\s+/ /mg;
+    }
+    print $fh $return, $n or die $!;
     return $return;
   }
   
@@ -696,7 +776,7 @@ Log::Easy - Easy to use, feature rich general purpose logging utility
   use Log::Easy;
   $log = new Log::Easy;
 
-=item $log->write({ OPTIONS }, <LOG_LEVEL>, @message );
+=item $log->write([{ OPTIONS }], <LOG_LEVEL>, @message );
 
 This is the main function for this package. If the first argument is a
 hash reference, it is taken as options to the logger for this log call
@@ -834,7 +914,7 @@ letter as the real log_level, followed by 2 `l's (eg ERROR => $ell,
 DEBUG => $dll, etc)
 
 These log_level specifiers, when used with the leading dollar sign MAY
-BE FILTERED OUT depending upon the settings for $ENV{FILTER}
+BE FILTERED OUT depending upon the settings for $ENV{LOG_FILTER}
 
 =item log_level_not_filtered
 

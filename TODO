@@ -28,3 +28,12 @@ etc...
 Also, maybe add something so that different log levels may be
 associated with different filehandles. For instance, ERROR could be
 bound to STDERR, while INFO could be bound to STDOUT, etc.
+
+
+It would be great to figure out how to use the FILTER to actually find
+the closing paren on the log call rather than forcing log calls that
+are to be filtered to exist all on one line
+
+
+need to change exported log_level constants to be prefixed with
+LL_<LEVEL> or some such
