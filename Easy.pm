@@ -9,7 +9,7 @@ use Exporter;
 our ( %EXPORT_TAGS, @ISA, @EXPORT_OK, @EXPORT, $VERSION );
 @ISA = qw( Exporter );
 
-$VERSION = '0.01.04';
+$VERSION = '0.01.06';
 
 our ($FILTER_REGEX, $NOT_FILTER_REGEX, $FILTER_ALL_REGEX, $MATCH_LOG_LEVEL_REGEX, $FILTER, $NOT_FILTER, $CNT );
 
@@ -634,11 +634,11 @@ FILEHANDLES : { # a cache of open filehandles for output
     }
     #print STDOUT "FH: [$level] :: ", $fh, ":", fileno($fh), "\n";
     
-    if ( $fh ) { return $fh if fileno($fh);}
+    return $fh if ( $fh and fileno($fh) );
     
     ( $fh = $FHS{$file} = new IO::File ) or die $!;
     
-    my $mode = -e $file ? '>>' : '>';
+    my $mode = $file =~ /^\s*[><]/ ? "" : -e $file ? '>>' : '>';
     
     $fh->open( "$mode $file" )
       and flock $fh, LOCK_EX || die $!;
@@ -713,8 +713,8 @@ be output, otherwise it will not.
 make a duplicate of the supplied $data or this log object if no data
 is supplied. Uses data dumper to duplicate original, therefore CODE
 references are not necessarily handled, although the contents of
-prefix will be assigned to the new (cloned) object from the original.
-returns the cloned object
+$log->prefix() will be assigned to the new (cloned) object from the
+original.  returns the cloned object
 
 =head2 OPTIONS
 

@@ -20,6 +20,11 @@ Add in some mechanism for log rotation. I'm sure there is an
 appropriate log rotatoin package out there.
 
 
-Add in some mechanism for a configuration file, wich option like
+Add in some mechanism for a configuration file, with options like
 logging inside of specific packages under certain circumstances,
 etc...
+
+
+Also, maybe add something so that different log levels may be
+associated with different filehandles. For instance, ERROR could be
+bound to STDERR, while INFO could be bound to STDOUT, etc.

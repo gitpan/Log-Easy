@@ -3,5 +3,5 @@ Makefile.PL
 MANIFEST
 README
 TODO
+Easy.pm
 t/1.t
-Log/Easy.pm
