@@ -9,6 +9,8 @@ use Exporter;
 our ( %EXPORT_TAGS, @ISA, @EXPORT_OK, @EXPORT, $VERSION );
 @ISA = qw( Exporter );
 
+$VERSION = '0.01.1';
+
 our ($FILTER_REGEX, $NOT_FILTER_REGEX, $FILTER_ALL_REGEX, $MATCH_LOG_LEVEL_REGEX, $FILTER, $NOT_FILTER, $CNT );
 
 our ( $DUMPER, $log_level, $log );
@@ -680,7 +682,7 @@ END {
 __END__
 =head1 NAME
 
-  Log::Easy - <BRIEF DESC>
+Log::Easy - Easy to use, feature rich general purpose logging utility
 
 =head1 SYNOPSIS
 
@@ -703,6 +705,14 @@ None by default.
 
 =item 0.01
 
+=back
+
+=head1 TODO
+
+=over 8
+
+=item 0.01
+DOCUMENTATION DOCUMENTATION DOCUMENTATION DOCUMENTATION DOCUMENTATION !!!!!
 =back
 
 
