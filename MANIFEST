@@ -4,4 +4,7 @@ MANIFEST
 README
 TODO
 Easy.pm
+Filter.pm
+Apache.pm
 t/1.t
+META.yml                                 Module meta-data (added by MakeMaker)

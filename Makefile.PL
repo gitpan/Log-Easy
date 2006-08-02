@@ -8,5 +8,8 @@ WriteMakefile(
               ABSTRACT_FROM     => 'Easy.pm',
               PREREQ_PM		=> { Filter::Simple => '.01',
                                    },
-              PM                => { 'Easy.pm' => '$(INST_LIBDIR)/Easy.pm'},
+              PM                => { 'Easy.pm'   => '$(INST_LIBDIR)/Easy.pm',
+                                     'Filter.pm' => '$(INST_LIBDIR)/Easy/Filter.pm',
+                                     'Apache.pm' => '$(INSTALLSITELIB)/Apache/Log/Easy.pm',
+                                   },
              );
